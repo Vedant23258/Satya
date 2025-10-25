@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SATYA Portal - Layout Verification System (Java Swing)
 
 A comprehensive Java Swing application for managing property layouts, court cases, document verification, and administrative tasks. This is an advanced desktop application that replicates all the functionality of the original web-based SATYA Portal.
@@ -369,3 +370,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **© 2023 SATYA Portal Team. All rights reserved.**
+=======
+# Satya
+>>>>>>> e9d0d69eeb643cb0f7f045cf0687ee65065a6134
