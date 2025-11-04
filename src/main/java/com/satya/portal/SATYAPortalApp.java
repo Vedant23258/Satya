@@ -1,14 +1,29 @@
 package com.satya.portal;
 
-import com.satya.portal.models.User;
-import com.satya.portal.PortalSecurityManager;
-import static com.satya.portal.utils.DataManager.getInstance;
-
-import javax.swing.*;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.RenderingHints;
 import java.util.Locale;
 import java.util.ResourceBundle;
+
+import javax.swing.BorderFactory;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JProgressBar;
+import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.UIManager;
+
+import com.formdev.flatlaf.FlatLightLaf;
+import com.satya.portal.models.User;
+import com.satya.portal.utils.ModernUIUtils;
 
 /**
  * Main Application Class for SATYA Portal - Layout Verification System
@@ -27,10 +42,10 @@ public class SATYAPortalApp {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                UIManager.setLookAndFeel(new NimbusLookAndFeel());
+                UIManager.setLookAndFeel(new FlatLightLaf());
                 SATYAPortalApp app = new SATYAPortalApp();
                 app.initializeApplication();
-            } catch (UnsupportedLookAndFeelException e) {
+            } catch (Exception e) {
                 JOptionPane.showMessageDialog(null,
                         "Failed to initialize application: " + e.getMessage(),
                         "Error", JOptionPane.ERROR_MESSAGE);
@@ -52,32 +67,48 @@ public class SATYAPortalApp {
 
     private void showSplashScreen() {
         JWindow splash = new JWindow();
-        splash.setSize(400, 300);
+        splash.setSize(500, 350);
         splash.setLocationRelativeTo(null);
 
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(41, 128, 185));
-        panel.setBorder(BorderFactory.createLineBorder(new Color(52, 73, 94), 2));
+        // Create a modern gradient panel for the splash screen
+        JPanel panel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                GradientPaint gp = new GradientPaint(0, 0, ModernUIUtils.PRIMARY_BLUE, 0, getHeight(), ModernUIUtils.SECONDARY_BLUE);
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                super.paintComponent(g);
+            }
+        };
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createLineBorder(ModernUIUtils.DARK_GRAY, 1));
 
         JLabel titleLabel = new JLabel("SATYA Portal", JLabel.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setFont(ModernUIUtils.TITLE_FONT);
         titleLabel.setForeground(Color.WHITE);
 
         JLabel subtitleLabel = new JLabel("సత్య పోర్టల్", JLabel.CENTER);
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 16));
+        subtitleLabel.setFont(ModernUIUtils.SUBTITLE_FONT);
         subtitleLabel.setForeground(Color.WHITE);
 
         JLabel versionLabel = new JLabel("Version " + VERSION, JLabel.CENTER);
-        versionLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        versionLabel.setFont(ModernUIUtils.BODY_FONT);
         versionLabel.setForeground(Color.WHITE);
 
         JProgressBar progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
         progressBar.setStringPainted(true);
         progressBar.setString("Loading...");
+        progressBar.putClientProperty("JProgressBar.arc", 999);
+        progressBar.setFont(ModernUIUtils.BODY_FONT);
+        progressBar.setForeground(Color.WHITE);
+        progressBar.setBackground(new Color(0, 0, 0, 30));
 
-        JPanel textPanel = new JPanel(new GridLayout(3, 1));
+        JPanel textPanel = new JPanel(new GridLayout(3, 1, 0, 10));
         textPanel.setOpaque(false);
+        textPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         textPanel.add(titleLabel);
         textPanel.add(subtitleLabel);
         textPanel.add(versionLabel);
@@ -130,20 +161,17 @@ public class SATYAPortalApp {
     }
 
     private void applyTheme() {
-        if (isDarkTheme) {
-            UIManager.put("control", new Color(64, 64, 64));
-            UIManager.put("text", Color.WHITE);
-            UIManager.put("nimbusBase", new Color(32, 32, 32));
-            UIManager.put("nimbusFocus", new Color(41, 128, 185));
-        } else {
-            UIManager.put("control", new Color(240, 240, 240));
-            UIManager.put("text", Color.BLACK);
-            UIManager.put("nimbusBase", Color.WHITE);
-            UIManager.put("nimbusFocus", new Color(41, 128, 185));
-        }
-
-        if (mainFrame != null) {
-            SwingUtilities.updateComponentTreeUI(mainFrame);
+        try {
+            if (isDarkTheme) {
+                com.formdev.flatlaf.FlatDarkLaf.setup();
+            } else {
+                com.formdev.flatlaf.FlatLightLaf.setup();
+            }
+            if (mainFrame != null) {
+                SwingUtilities.updateComponentTreeUI(mainFrame);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

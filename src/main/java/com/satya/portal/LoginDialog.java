@@ -1,26 +1,41 @@
 package com.satya.portal;
 
-import com.satya.portal.models.User;
-import com.satya.portal.utils.DataManager;
-
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Frame;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import static java.lang.constant.ConstantDescs.NULL;
-import java.util.List;
 
-/**
- * Login Dialog for SATYA Portal
- * Provides authentication interface with role-based access
- */
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+
+import com.satya.portal.models.User;
+import com.satya.portal.utils.DataManager;
+import com.satya.portal.utils.ModernUIUtils;
+
 public class LoginDialog extends JDialog {
     private static final Color PRIMARY_COLOR = new Color(41, 128, 185);
-    private static final Color SUCCESS_COLOR = new Color(39, 174, 96);
     private static final Color ERROR_COLOR = new Color(231, 76, 60);
-    
+    private static final Color CARD_BG = new Color(255, 255, 255, 235);
+
     private final SATYAPortalApp parentApp;
     private JTextField usernameField;
     private JPasswordField passwordField;
@@ -29,204 +44,134 @@ public class LoginDialog extends JDialog {
     private JButton cancelButton;
     private JCheckBox rememberMeCheckBox;
     private JLabel statusLabel;
-    
-    private List<User> mockUsers;
+
     private int loginAttempts = 0;
     private final int MAX_LOGIN_ATTEMPTS = 3;
-    private User user;
-    
+
     public LoginDialog(Frame parent, SATYAPortalApp app) {
         super(parent, "SATYA Portal - Login", true);
         this.parentApp = app;
-        this.mockUsers = DataManager.getInstance().getMockUsers();
-        
+
         initializeComponents();
         setupLayout();
         bindEvents();
         setupDialog();
     }
-    
+
     private void initializeComponents() {
-        // Username field
-        usernameField = new JTextField(20);
-        usernameField.setFont(new Font("Arial", Font.PLAIN, 14));
-        
-        // Password field
-        passwordField = new JPasswordField(20);
-        passwordField.setFont(new Font("Arial", Font.PLAIN, 14));
-        
-        // Role selection
+        usernameField = new JTextField(18);
+        usernameField.setFont(ModernUIUtils.BODY_FONT);
+        usernameField.putClientProperty("JTextField.placeholderText", "Enter username");
+
+        passwordField = new JPasswordField(18);
+        passwordField.setFont(ModernUIUtils.BODY_FONT);
+        passwordField.putClientProperty("JTextField.placeholderText", "Enter password");
+
         String[] roles = {"Select Role", "Admin", "User", "Viewer"};
         roleComboBox = new JComboBox<>(roles);
-        roleComboBox.setFont(new Font("Arial", Font.PLAIN, 14));
-        
-        // Buttons
-        loginButton = new JButton("Login");
-        loginButton.setFont(new Font("Arial", Font.BOLD, 14));
-        loginButton.setBackground(PRIMARY_COLOR);
-        loginButton.setForeground(Color.WHITE);
-        loginButton.setFocusPainted(false);
-        loginButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        
-        cancelButton = new JButton("Cancel");
-        cancelButton.setFont(new Font("Arial", Font.PLAIN, 14));
-        
-        // Remember me checkbox
+        roleComboBox.setFont(ModernUIUtils.BODY_FONT);
+
+        loginButton = ModernUIUtils.createModernButton("Login", ModernUIUtils.PRIMARY_BLUE);
+        cancelButton = ModernUIUtils.createModernButton("Cancel", ModernUIUtils.DANGER_RED);
+
         rememberMeCheckBox = new JCheckBox("Remember me");
-        rememberMeCheckBox.setFont(new Font("Arial", Font.PLAIN, 12));
-        
-        // Status label
+        rememberMeCheckBox.setFont(ModernUIUtils.BODY_FONT);
+
         statusLabel = new JLabel(" ");
-        statusLabel.setFont(new Font("Arial", Font.PLAIN, 12));
+        statusLabel.setFont(ModernUIUtils.BODY_FONT);
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
     }
-    
+
     private void setupLayout() {
         setLayout(new BorderLayout());
-        
-        // Header panel
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(PRIMARY_COLOR);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
+
+        // Create a gradient panel for the header
+        JPanel headerPanel = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g;
+                g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                GradientPaint gp = new GradientPaint(0, 0, ModernUIUtils.PRIMARY_BLUE, 0, getHeight(), ModernUIUtils.SECONDARY_BLUE);
+                g2d.setPaint(gp);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                super.paintComponent(g);
+            }
+        };
+        headerPanel.setOpaque(false);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(24, 24, 8, 24));
         JLabel titleLabel = new JLabel("SATYA Portal", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setFont(ModernUIUtils.TITLE_FONT);
         titleLabel.setForeground(Color.WHITE);
-        
         JLabel subtitleLabel = new JLabel("సత్య పోర్టల్ - Layout Verification System", SwingConstants.CENTER);
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
+        subtitleLabel.setFont(ModernUIUtils.SUBTITLE_FONT);
         subtitleLabel.setForeground(Color.WHITE);
-        
         headerPanel.add(titleLabel, BorderLayout.CENTER);
         headerPanel.add(subtitleLabel, BorderLayout.SOUTH);
-        
-        // Form panel
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
-        
+
+        // Create a modern card for the login form
+        JPanel cardPanel = ModernUIUtils.createModernCard(32);
+        cardPanel.setLayout(new GridBagLayout());
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(12, 12, 12, 12);
         gbc.anchor = GridBagConstraints.WEST;
-        
-        // Username row
+
+        JLabel usernameLabel = new JLabel("Username:");
+        usernameLabel.setFont(ModernUIUtils.BODY_FONT);
         gbc.gridx = 0; gbc.gridy = 0;
-        formPanel.add(new JLabel("Username:"), gbc);
+        cardPanel.add(usernameLabel, gbc);
         gbc.gridx = 1;
-        formPanel.add(usernameField, gbc);
-        
-        // Password row
+        cardPanel.add(usernameField, gbc);
+
+        JLabel passwordLabel = new JLabel("Password:");
+        passwordLabel.setFont(ModernUIUtils.BODY_FONT);
         gbc.gridx = 0; gbc.gridy = 1;
-        formPanel.add(new JLabel("Password:"), gbc);
+        cardPanel.add(passwordLabel, gbc);
         gbc.gridx = 1;
-        formPanel.add(passwordField, gbc);
-        
-        // Role row
+        cardPanel.add(passwordField, gbc);
+
+        JLabel roleLabel = new JLabel("Role:");
+        roleLabel.setFont(ModernUIUtils.BODY_FONT);
         gbc.gridx = 0; gbc.gridy = 2;
-        formPanel.add(new JLabel("Role:"), gbc);
+        cardPanel.add(roleLabel, gbc);
         gbc.gridx = 1;
-        formPanel.add(roleComboBox, gbc);
-        
-        // Remember me row
-        gbc.gridx = 1; gbc.gridy = 3;
-        gbc.anchor = GridBagConstraints.CENTER;
-        formPanel.add(rememberMeCheckBox, gbc);
-        
-        // Status row
-        gbc.gridx = 0; gbc.gridy = 4;
-        gbc.gridwidth = 2;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        formPanel.add(statusLabel, gbc);
-        
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout());
-        buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
+        cardPanel.add(roleComboBox, gbc);
+
+        gbc.gridx = 1; gbc.gridy = 3; gbc.anchor = GridBagConstraints.CENTER;
+        cardPanel.add(rememberMeCheckBox, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL;
+        cardPanel.add(statusLabel, gbc);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 18, 18));
+        buttonPanel.setOpaque(false);
         buttonPanel.add(loginButton);
-        buttonPanel.add(Box.createHorizontalStrut(10));
         buttonPanel.add(cancelButton);
-        
-        // Demo credentials panel
-        JPanel demoPanel = createDemoCredentialsPanel();
-        
-        // Add all panels
+
         add(headerPanel, BorderLayout.NORTH);
-        add(formPanel, BorderLayout.CENTER);
+        add(cardPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
-        add(demoPanel, BorderLayout.WEST);
     }
-    
-    private JPanel createDemoCredentialsPanel() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder("Demo Credentials"));
-        panel.setBackground(new Color(245, 245, 245));
-        
-        JLabel titleLabel = new JLabel("Test Accounts:");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        panel.add(titleLabel);
-        panel.add(Box.createVerticalStrut(5));
-        
-        // Admin account
-        panel.add(new JLabel("Admin:"));
-        panel.add(new JLabel("  Username: admin"));
-        panel.add(new JLabel("  Password: admin123"));
-        panel.add(Box.createVerticalStrut(10));
-        
-        // User account
-        panel.add(new JLabel("User:"));
-        panel.add(new JLabel("  Username: user"));
-        panel.add(new JLabel("  Password: user123"));
-        panel.add(Box.createVerticalStrut(10));
-        
-        // Viewer account
-        panel.add(new JLabel("Viewer:"));
-        panel.add(new JLabel("  Username: viewer"));
-        panel.add(new JLabel("  Password: viewer123"));
-        
-        return panel;
-    }
-    
+
     private void bindEvents() {
-        // Login button action
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                performLogin();
-            }
-        });
-        
-        // Cancel button action
-        cancelButton.addActionListener((ActionEvent e) -> {
-            System.exit(0);
-        });
-        
-        // Enter key listener for password field
+        loginButton.addActionListener(e -> performLogin());
+        cancelButton.addActionListener(e -> System.exit(0));
         passwordField.addKeyListener(new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {}
-            
             @Override
             public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    performLogin();
-                }
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) performLogin();
             }
-            
             @Override
             public void keyReleased(KeyEvent e) {}
         });
-        
-        // Role selection auto-fill for demo
-        roleComboBox.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String selectedRole = (String) roleComboBox.getSelectedItem();
-                if (selectedRole != null && !selectedRole.equals("Select Role")) {
-                    autoFillCredentials(selectedRole.toLowerCase());
-                }
-            }
+        roleComboBox.addActionListener(e -> {
+            String selectedRole = String.valueOf(roleComboBox.getSelectedItem());
+            if (selectedRole != null && !selectedRole.equals("Select Role")) autoFillCredentials(selectedRole.toLowerCase());
         });
     }
-    
+
     private void autoFillCredentials(String role) {
         switch (role) {
             case "admin":
@@ -243,93 +188,76 @@ public class LoginDialog extends JDialog {
                 break;
         }
     }
-    
+
     private void performLogin() {
         String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
-        String selectedRole = (String) roleComboBox.getSelectedItem();
-        
-        // Validate input
-        if (username.isEmpty() || password.isEmpty() || 
-            selectedRole == null || selectedRole.equals("Select Role")) {
+        String selectedRole = String.valueOf(roleComboBox.getSelectedItem());
+        if (username.isEmpty() || password.isEmpty() || selectedRole == null || selectedRole.equals("Select Role")) {
             showStatus("Please fill all fields", ERROR_COLOR);
             return;
         }
-        
-        // Show loading
-        showStatus("Authenticating...", Color.BLUE);
+        showStatus("Authenticating...", PRIMARY_COLOR);
         loginButton.setEnabled(false);
-        
-        // Simulate authentication delay
-        Timer timer = new Timer(1500, (ActionEvent e) -> {
-            authenticateUser(username, password, selectedRole);
-            loginButton.setEnabled(true);
-        });
-        timer.setRepeats(false);
-        timer.start();
+
+        // Directly authenticate, no timer/recursion = NO LOOP BUG
+        authenticateUser(username, password, selectedRole);
+        loginButton.setEnabled(true);
     }
-    
+
     private void authenticateUser(String username, String password, String roleStr) {
-        User.Role expectedRole = User.Role.fromString(roleStr);
-        User matchedUser = null;
-        
-        // Find user in mock data
-     User authenticatedUser = null;
-
-for (User user : mockUsers) {
-    if (user.getUsername().equals(username) &&
-        user.authenticate(password) &&
-        user.getRole() == expectedRole) {
-        authenticatedUser = user;
-        break;
-    }
-}
-
-if (authenticatedUser != null) {
-    authenticatedUser.updateLastLogin();
-
-    // Wrap in final array to bypass inner class restriction
-    final User[] wrapper = new User[]{authenticatedUser};
-
-    Timer successTimer = new Timer(500, new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            parentApp.onLoginSuccess(wrapper[0]); // ✅ safe access
+        // Use database authentication through DataManager
+        User.Role role = User.Role.USER; // default
+        switch (roleStr.toLowerCase()) {
+            case "admin":
+                role = User.Role.ADMIN;
+                break;
+            case "user":
+                role = User.Role.USER;
+                break;
+            case "viewer":
+                role = User.Role.VIEWER;
+                break;
         }
-    });
-    successTimer.setRepeats(false);
-    successTimer.start();
+        
+        User authenticatedUser = DataManager.getInstance().authenticateUser(username, password, role);
 
+        if (authenticatedUser != null) {
+            authenticatedUser.updateLastLogin();
+            dispose(); // CLOSE login dialog BEFORE opening main window
+            User finalAuthenticatedUser = authenticatedUser; // 👈 assign to final-style variable
+
+            // ✅ Now use in lambda safely
+            SwingUtilities.invokeLater(() -> parentApp.onLoginSuccess(finalAuthenticatedUser));
         } else {
-            // Login failed
             loginAttempts++;
             if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
                 showStatus("Too many failed attempts. Application will close.", ERROR_COLOR);
-                Timer closeTimer = new Timer(2000, (ActionEvent e) -> {
-                    System.exit(0);
-                });
-                closeTimer.setRepeats(false);
-                closeTimer.start();
+                new Timer(2000, e -> System.exit(0)).start();
             } else {
-                showStatus("Invalid credentials. Attempt " + loginAttempts + " of " + MAX_LOGIN_ATTEMPTS, ERROR_COLOR);
+                showStatus("Invalid credentials. Attempt " + loginAttempts
+                        + " of " + MAX_LOGIN_ATTEMPTS, ERROR_COLOR);
                 passwordField.selectAll();
                 passwordField.requestFocus();
             }
         }
     }
-    
-    private void showStatus(String message, Color color) {
-        statusLabel.setText(message);
+
+    private void showStatus(String msg, Color color) {
+        statusLabel.setText(msg);
         statusLabel.setForeground(color);
+        // Add a subtle animation effect
+        statusLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(color, 1, true),
+            BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
     }
-    
+
     private void setupDialog() {
         setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
         setResizable(false);
         pack();
         setLocationRelativeTo(null);
-        
-        // Set focus to username field
         SwingUtilities.invokeLater(() -> usernameField.requestFocus());
     }
 }

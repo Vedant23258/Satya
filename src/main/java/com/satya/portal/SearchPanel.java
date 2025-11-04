@@ -1,7 +1,10 @@
 package com.satya.portal;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import com.satya.portal.models.Layout;
 import com.satya.portal.utils.DataManager;
+import com.satya.portal.utils.ModernUIUtils;
+import com.satya.portal.LayoutActionDialog; // Add this import
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -10,6 +13,7 @@ import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SearchPanel extends JPanel {
@@ -76,38 +80,33 @@ public class SearchPanel extends JPanel {
     
     private void initializeComponents() {
         searchField = new JTextField(25);
-        searchField.setFont(new Font("Arial", Font.PLAIN, 14));
+        searchField.setFont(ModernUIUtils.BODY_FONT);
         searchField.setToolTipText("Search by layout name, file number, or survey number");
+        searchField.putClientProperty("JTextField.placeholderText", "Enter layout name, file number, or survey number");
 
         String[] statusOptions = {"All Status", "Approved", "Pending", "Under Review", "Rejected", "Unauthorized"};
         statusComboBox = new JComboBox<>(statusOptions);
-        statusComboBox.setFont(new Font("Arial", Font.PLAIN, 12));
+        statusComboBox.setFont(ModernUIUtils.BODY_FONT);
 
         ownerField = new JTextField(15);
-        ownerField.setFont(new Font("Arial", Font.PLAIN, 14));
+        ownerField.setFont(ModernUIUtils.BODY_FONT);
         ownerField.setToolTipText("Search by owner name");
+        ownerField.putClientProperty("JTextField.placeholderText", "Enter owner name");
 
         String[] areaRanges = {"All Areas", "< 1 Acre", "1-2 Acres", "2-5 Acres", "5-10 Acres", "> 10 Acres"};
         areaRangeComboBox = new JComboBox<>(areaRanges);
-        areaRangeComboBox.setFont(new Font("Arial", Font.PLAIN, 12));
+        areaRangeComboBox.setFont(ModernUIUtils.BODY_FONT);
 
-        searchButton = new JButton("🔍 Search");
-        searchButton.setFont(new Font("Arial", Font.BOLD, 12));
-        searchButton.setBackground(PRIMARY_COLOR);
-        searchButton.setForeground(Color.WHITE);
-        searchButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        clearButton = new JButton("🗑️ Clear");
-        clearButton.setFont(new Font("Arial", Font.PLAIN, 12));
-
-        advancedButton = new JButton("⚙️ Advanced");
-        advancedButton.setFont(new Font("Arial", Font.PLAIN, 12));
+        searchButton = ModernUIUtils.createModernButton("🔍 Search", ModernUIUtils.PRIMARY_BLUE);
+        clearButton = ModernUIUtils.createModernButton("🗑️ Clear", ModernUIUtils.DANGER_RED);
+        advancedButton = ModernUIUtils.createModernButton("⚙️ Advanced", ModernUIUtils.WARNING_ORANGE);
 
         searchProgressBar = new JProgressBar();
         searchProgressBar.setIndeterminate(true);
         searchProgressBar.setVisible(false);
         searchProgressBar.setStringPainted(true);
         searchProgressBar.setString("Searching...");
+        searchProgressBar.putClientProperty("JProgressBar.arc", 999);
 
         String[] columnNames = {"File No.", "Layout Name", "Status", "Owner", "Area", "Application Date", "Survey No."};
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -116,15 +115,13 @@ public class SearchPanel extends JPanel {
         };
 
         resultsTable = new JTable(tableModel);
-        resultsTable.setFont(new Font("Arial", Font.PLAIN, 12));
-        resultsTable.setRowHeight(25);
-        resultsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        ModernUIUtils.styleTable(resultsTable);
         resultsTable.setAutoCreateRowSorter(true);
         resultsTable.getColumnModel().getColumn(2).setCellRenderer(new StatusCellRenderer());
 
         resultCountLabel = new JLabel("0 results found");
-        resultCountLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        resultCountLabel.setForeground(Color.GRAY);
+        resultCountLabel.setFont(ModernUIUtils.BODY_FONT);
+        resultCountLabel.setForeground(ModernUIUtils.DARK_GRAY);
 
         createAdvancedFiltersPanel();
 
@@ -132,58 +129,70 @@ public class SearchPanel extends JPanel {
         tableScrollPane = new JScrollPane(resultsTable);
         tableScrollPane.setPreferredSize(new Dimension(0, 350));
         tableScrollPane.setVisible(false);
+        tableScrollPane.setBorder(ModernUIUtils.createModernBorder());
 
-        emptyPanel = new JPanel(new BorderLayout());
-        emptyPanel.setOpaque(false);
+        emptyPanel = ModernUIUtils.createModernCard(30);
         JLabel msgLabel = new JLabel("🔍 No results yet. Please search.", SwingConstants.CENTER);
-        msgLabel.setFont(new Font("Arial", Font.ITALIC, 16));
-        msgLabel.setForeground(Color.GRAY);
+        msgLabel.setFont(ModernUIUtils.SUBTITLE_FONT);
+        msgLabel.setForeground(ModernUIUtils.DARK_GRAY);
         emptyPanel.add(msgLabel, BorderLayout.CENTER);
     }
 
     private void createAdvancedFiltersPanel() {
-        advancedFiltersPanel = new JPanel(new GridBagLayout());
+        advancedFiltersPanel = ModernUIUtils.createModernCard(15);
         advancedFiltersPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(PRIMARY_COLOR), "Advanced Filters",
-                TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 12), PRIMARY_COLOR));
-        advancedFiltersPanel.setOpaque(false);
+                BorderFactory.createLineBorder(ModernUIUtils.PRIMARY_BLUE), "Advanced Filters",
+                TitledBorder.LEFT, TitledBorder.TOP, ModernUIUtils.BUTTON_FONT, ModernUIUtils.PRIMARY_BLUE));
         advancedFiltersPanel.setVisible(false);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 8, 8, 8);
         gbc.anchor = GridBagConstraints.WEST;
         gbc.gridx = 0; gbc.gridy = 0;
-        advancedFiltersPanel.add(new JLabel("Survey Number:"), gbc);
+        JLabel surveyLabel = new JLabel("Survey Number:");
+        surveyLabel.setFont(ModernUIUtils.BODY_FONT);
+        advancedFiltersPanel.add(surveyLabel, gbc);
         gbc.gridx = 1;
         surveyNumberField = new JTextField(15);
+        surveyNumberField.setFont(ModernUIUtils.BODY_FONT);
         advancedFiltersPanel.add(surveyNumberField, gbc);
 
         gbc.gridx = 2; gbc.gridy = 0;
-        advancedFiltersPanel.add(new JLabel("District:"), gbc);
+        JLabel districtLabel = new JLabel("District:");
+        districtLabel.setFont(ModernUIUtils.BODY_FONT);
+        advancedFiltersPanel.add(districtLabel, gbc);
         gbc.gridx = 3;
         String[] districts = {"All Districts", "Nellore", "Kavali", "Gudur", "Atmakur", "Sullurpeta"};
         districtComboBox = new JComboBox<>(districts);
+        districtComboBox.setFont(ModernUIUtils.BODY_FONT);
         advancedFiltersPanel.add(districtComboBox, gbc);
 
         gbc.gridx = 0; gbc.gridy = 1;
-        advancedFiltersPanel.add(new JLabel("From Date:"), gbc);
+        JLabel fromLabel = new JLabel("From Date:");
+        fromLabel.setFont(ModernUIUtils.BODY_FONT);
+        advancedFiltersPanel.add(fromLabel, gbc);
         gbc.gridx = 1;
         fromDateSpinner = new JSpinner(new SpinnerDateModel());
         JSpinner.DateEditor fromDateEditor = new JSpinner.DateEditor(fromDateSpinner, "dd/MM/yyyy");
         fromDateSpinner.setEditor(fromDateEditor);
+        fromDateSpinner.setFont(ModernUIUtils.BODY_FONT);
         advancedFiltersPanel.add(fromDateSpinner, gbc);
 
         gbc.gridx = 2; gbc.gridy = 1;
-        advancedFiltersPanel.add(new JLabel("To Date:"), gbc);
+        JLabel toLabel = new JLabel("To Date:");
+        toLabel.setFont(ModernUIUtils.BODY_FONT);
+        advancedFiltersPanel.add(toLabel, gbc);
         gbc.gridx = 3;
         toDateSpinner = new JSpinner(new SpinnerDateModel());
         JSpinner.DateEditor toDateEditor = new JSpinner.DateEditor(toDateSpinner, "dd/MM/yyyy");
         toDateSpinner.setEditor(toDateEditor);
+        toDateSpinner.setFont(ModernUIUtils.BODY_FONT);
         advancedFiltersPanel.add(toDateSpinner, gbc);
 
         gbc.gridx = 0; gbc.gridy = 2;
         gbc.gridwidth = 2;
         hasCourtCaseCheckBox = new JCheckBox("Has Court Case");
+        hasCourtCaseCheckBox.setFont(ModernUIUtils.BODY_FONT);
         advancedFiltersPanel.add(hasCourtCaseCheckBox, gbc);
     }
 
@@ -191,86 +200,83 @@ public class SearchPanel extends JPanel {
         setOpaque(false);
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        
+        // Create main content panel with modern card styling
+        JPanel contentPanel = ModernUIUtils.createModernCard(20);
+        contentPanel.setLayout(new BorderLayout());
+
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setOpaque(false);
 
-        JPanel basicSearchPanel = new JPanel(new GridBagLayout());
-        basicSearchPanel.setBackground(new Color(255,255,255,230));
+        JPanel basicSearchPanel = ModernUIUtils.createModernCard(15);
         basicSearchPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(PRIMARY_COLOR), "Search Layouts",
-                TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 14), PRIMARY_COLOR));
+                BorderFactory.createLineBorder(ModernUIUtils.PRIMARY_BLUE), "Search Layouts",
+                TitledBorder.LEFT, TitledBorder.TOP, ModernUIUtils.BUTTON_FONT, ModernUIUtils.PRIMARY_BLUE));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 8, 8, 8);
         gbc.anchor = GridBagConstraints.WEST;
+
         gbc.gridx = 0; gbc.gridy = 0;
-        basicSearchPanel.add(new JLabel("Search Term:"), gbc);
-        gbc.gridx = 1;
+        JLabel searchLabel = new JLabel("Search:");
+        searchLabel.setFont(ModernUIUtils.BODY_FONT);
+        basicSearchPanel.add(searchLabel, gbc);
+        gbc.gridx = 1; gbc.gridwidth = 2;
         basicSearchPanel.add(searchField, gbc);
-        gbc.gridx = 2;
-        basicSearchPanel.add(new JLabel("Status:"), gbc);
-        gbc.gridx = 3;
+
+        gbc.gridx = 3; gbc.gridwidth = 1;
+        JLabel statusLabel = new JLabel("Status:");
+        statusLabel.setFont(ModernUIUtils.BODY_FONT);
+        basicSearchPanel.add(statusLabel, gbc);
+        gbc.gridx = 4;
         basicSearchPanel.add(statusComboBox, gbc);
-        gbc.gridx = 0; gbc.gridy = 1;
-        basicSearchPanel.add(new JLabel("Owner Name:"), gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1;
+        JLabel ownerLabel = new JLabel("Owner:");
+        ownerLabel.setFont(ModernUIUtils.BODY_FONT);
+        basicSearchPanel.add(ownerLabel, gbc);
         gbc.gridx = 1;
         basicSearchPanel.add(ownerField, gbc);
+
         gbc.gridx = 2;
-        basicSearchPanel.add(new JLabel("Area Range:"), gbc);
-        gbc.gridx = 3;
+        JLabel areaLabel = new JLabel("Area:");
+        areaLabel.setFont(ModernUIUtils.BODY_FONT);
+        basicSearchPanel.add(areaLabel, gbc);
+        gbc.gridx = 3; gbc.gridwidth = 2;
         basicSearchPanel.add(areaRangeComboBox, gbc);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         buttonPanel.setOpaque(false);
         buttonPanel.add(searchButton);
         buttonPanel.add(clearButton);
         buttonPanel.add(advancedButton);
 
-        gbc.gridx = 0; gbc.gridy = 2;
-        gbc.gridwidth = 4;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 5;
         basicSearchPanel.add(buttonPanel, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 3;
-        gbc.gridwidth = 4;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        basicSearchPanel.add(searchProgressBar, gbc);
+        topPanel.add(basicSearchPanel, BorderLayout.CENTER);
+        topPanel.add(searchProgressBar, BorderLayout.SOUTH);
 
-        topPanel.add(basicSearchPanel, BorderLayout.NORTH);
-        topPanel.add(advancedFiltersPanel, BorderLayout.CENTER);
-
-        add(topPanel, BorderLayout.NORTH);
-
-        JPanel resultsPanel = new JPanel(new BorderLayout());
+        contentPanel.add(topPanel, BorderLayout.NORTH);
+        contentPanel.add(advancedFiltersPanel, BorderLayout.CENTER);
+        
+        JPanel resultsPanel = ModernUIUtils.createModernCard(15);
+        resultsPanel.setLayout(new BorderLayout());
         resultsPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(PRIMARY_COLOR), "Search Results",
-                TitledBorder.LEFT, TitledBorder.TOP, new Font("Arial", Font.BOLD, 14), PRIMARY_COLOR));
-        resultsPanel.setBackground(new Color(255,255,255,230));
-
-        JPanel resultsHeaderPanel = new JPanel(new BorderLayout());
-        resultsHeaderPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 5, 10));
-        resultsHeaderPanel.setOpaque(false);
-        resultsHeaderPanel.add(resultCountLabel, BorderLayout.WEST);
-
-        JPanel actionButtonsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        actionButtonsPanel.setOpaque(false);
-        JButton viewDetailsButton = new JButton("📄 View Details");
-        JButton exportButton = new JButton("📤 Export");
-        JButton refreshButton = new JButton("🔄 Refresh");
-        viewDetailsButton.addActionListener(e -> viewSelectedLayoutDetails());
-        exportButton.addActionListener(e -> exportResults());
-        refreshButton.addActionListener(e -> refreshData());
-        actionButtonsPanel.add(viewDetailsButton);
-        actionButtonsPanel.add(exportButton);
-        actionButtonsPanel.add(refreshButton);
-
-        resultsHeaderPanel.add(actionButtonsPanel, BorderLayout.EAST);
-        resultsPanel.add(resultsHeaderPanel, BorderLayout.NORTH);
-
-        // Start with emptyPanel as center
+                BorderFactory.createLineBorder(ModernUIUtils.PRIMARY_BLUE), "Search Results",
+                TitledBorder.LEFT, TitledBorder.TOP, ModernUIUtils.BUTTON_FONT, ModernUIUtils.PRIMARY_BLUE));
+        
+        JPanel resultsHeader = new JPanel(new BorderLayout());
+        resultsHeader.setOpaque(false);
+        resultsHeader.add(resultCountLabel, BorderLayout.WEST);
+        
+        resultsPanel.add(resultsHeader, BorderLayout.NORTH);
+        resultsPanel.add(tableScrollPane, BorderLayout.CENTER);
         resultsPanel.add(emptyPanel, BorderLayout.CENTER);
 
-        add(resultsPanel, BorderLayout.CENTER);
+        contentPanel.add(resultsPanel, BorderLayout.SOUTH);
+
+        add(contentPanel, BorderLayout.CENTER);
     }
 
     private void bindEvents() {
@@ -306,15 +312,24 @@ public class SearchPanel extends JPanel {
         String ownerName = ownerField.getText().trim();
         String statusFilter = "All Status".equals(selectedStatus) ? null : selectedStatus;
 
-        List<Layout> results = DataManager.getInstance().searchLayouts(
-                searchTerm.isEmpty() ? null : searchTerm,
-                statusFilter,
-                ownerName.isEmpty() ? null : ownerName
-        );
-        results = filterByArea(results);
+        // If no search criteria provided, show all layouts
+        List<Layout> results;
+        if (searchTerm.isEmpty() && "All Status".equals(selectedStatus) && ownerName.isEmpty() && 
+            !advancedFiltersVisible && areaRangeComboBox.getSelectedIndex() == 0) {
+            // Show all layouts when no filters are applied
+            results = DataManager.getInstance().getAllLayouts();
+        } else {
+            // Apply filters when search criteria is provided
+            results = DataManager.getInstance().searchLayouts(
+                    searchTerm.isEmpty() ? null : searchTerm,
+                    statusFilter,
+                    ownerName.isEmpty() ? null : ownerName
+            );
+            results = filterByArea(results);
 
-        if (advancedFiltersVisible) {
-            results = applyAdvancedFilters(results);
+            if (advancedFiltersVisible) {
+                results = applyAdvancedFilters(results);
+            }
         }
 
         updateResultsTable(results);
@@ -419,7 +434,29 @@ public class SearchPanel extends JPanel {
             int modelRow = resultsTable.convertRowIndexToModel(selectedRow);
             String fileNumber = (String) tableModel.getValueAt(modelRow, 0);
             Layout layout = DataManager.getInstance().getLayoutById(fileNumber);
-            if (layout != null) showLayoutDetailsDialog(layout);
+            if (layout != null) {
+                // Show the LayoutActionDialog instead of directly opening document viewer
+                LayoutActionDialog dialog = new LayoutActionDialog(parentFrame, layout);
+                int result = dialog.showDialog();
+                
+                switch (result) {
+                    case LayoutActionDialog.VIEW_ON_MAP:
+                        // Center map on layout coordinates and switch to map tab
+                        if (layout.getLatitude() != 0 && layout.getLongitude() != 0) {
+                            parentFrame.centerMapOnLocation(layout.getLatitude(), layout.getLongitude());
+                            parentFrame.mainTabbedPane.setSelectedIndex(1); // Map tab
+                        } else {
+                            parentFrame.showWarningMessage("This layout does not have valid coordinates for map display.");
+                        }
+                        break;
+                    case LayoutActionDialog.VIEW_DOCUMENTS:
+                        openDocumentViewer(layout);
+                        break;
+                    case LayoutActionDialog.CANCEL:
+                        // Do nothing, dialog was cancelled
+                        break;
+                }
+            }
         } else {
             parentFrame.showWarningMessage("Please select a layout to view details.");
         }
@@ -473,12 +510,36 @@ public class SearchPanel extends JPanel {
                 parentFrame.mainTabbedPane.setSelectedIndex(1);
             }
         });
+        viewDocButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                detailsDialog.dispose();
+                openDocumentViewer(layout);
+            }
+        });
         buttonPanel.add(viewMapButton);
         buttonPanel.add(viewDocButton);
         buttonPanel.add(closeButton);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
         detailsDialog.add(mainPanel);
         detailsDialog.setVisible(true);
+    }
+    
+    /**
+     * Opens the document viewer for the selected layout.
+     * 
+     * @param layout The layout to view documents for
+     */
+    private void openDocumentViewer(Layout layout) {
+        // Switch to the Documents tab
+        parentFrame.mainTabbedPane.setSelectedIndex(2);
+        
+        // Show a message with layout information
+        JOptionPane.showMessageDialog(parentFrame, 
+            "Document Viewer for Layout: " + layout.getLayoutName() + "\n" +
+            "File Number: " + layout.getFileNumber() + "\n\n" +
+            "In a real implementation, this would show the actual documents for this layout.",
+            "Document Viewer",
+            JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void exportResults() {
@@ -495,7 +556,8 @@ public class SearchPanel extends JPanel {
     }
 
     private void loadInitialData() {
-        updateResultsTable(java.util.Collections.emptyList());
+        // Start with empty data instead of loading all layouts
+        updateResultsTable(new ArrayList<>());
     }
 
     public void refreshData() {
@@ -504,23 +566,51 @@ public class SearchPanel extends JPanel {
     }
 
     private class StatusCellRenderer extends JLabel implements TableCellRenderer {
-        public StatusCellRenderer() { setOpaque(true); }
+        public StatusCellRenderer() { 
+            setOpaque(true); 
+        }
+        
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             String status = (String) value;
             setText(status);
             setHorizontalAlignment(CENTER);
+            setFont(ModernUIUtils.BUTTON_FONT);
+            setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+            
             Color bgColor = Color.WHITE, textColor = Color.BLACK;
             if (status != null) {
                 switch (status) {
-                    case "Approved": bgColor = new Color(39,174,96); textColor = Color.WHITE; break;
-                    case "Pending": bgColor = new Color(243,156,18); textColor = Color.WHITE; break;
-                    case "Under Review": bgColor = new Color(52,152,219); textColor = Color.WHITE; break;
-                    case "Rejected": bgColor = new Color(231,76,60); textColor = Color.WHITE; break;
-                    case "Unauthorized": bgColor = new Color(155,89,182); textColor = Color.WHITE; break;
+                    case "Approved": 
+                        bgColor = ModernUIUtils.SUCCESS_GREEN; 
+                        textColor = Color.WHITE; 
+                        break;
+                    case "Pending": 
+                        bgColor = ModernUIUtils.WARNING_ORANGE; 
+                        textColor = Color.WHITE; 
+                        break;
+                    case "Under Review": 
+                        bgColor = ModernUIUtils.PRIMARY_BLUE; 
+                        textColor = Color.WHITE; 
+                        break;
+                    case "Rejected": 
+                        bgColor = ModernUIUtils.DANGER_RED; 
+                        textColor = Color.WHITE; 
+                        break;
+                    case "Unauthorized": 
+                        bgColor = ModernUIUtils.INFO_PURPLE; 
+                        textColor = Color.WHITE; 
+                        break;
                 }
             }
-            if (isSelected) { setBackground(table.getSelectionBackground()); setForeground(table.getSelectionForeground()); }
-            else { setBackground(bgColor); setForeground(textColor); }
+            
+            if (isSelected) { 
+                setBackground(table.getSelectionBackground()); 
+                setForeground(table.getSelectionForeground()); 
+            } else { 
+                setBackground(bgColor); 
+                setForeground(textColor); 
+            }
+            
             return this;
         }
     }

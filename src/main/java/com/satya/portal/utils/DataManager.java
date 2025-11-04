@@ -1,26 +1,67 @@
 package com.satya.portal.utils;
 
-import com.satya.portal.models.*;
-import java.util.*;
-import java.time.LocalDateTime;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.satya.portal.DBConnection;
+import com.satya.portal.models.CourtCase;
+import com.satya.portal.models.Layout;
+import com.satya.portal.models.User;
 
 /**
  * DataManager - Singleton class for managing application data
- * Provides mock data for development and testing
+ * Provides data from database for production and mock data for development/testing
  */
 public class DataManager {
     private static DataManager instance;
+    private DatabaseManager databaseManager;
+    private boolean useDatabase = false; // Flag to switch between mock and database
     
     private List<User> mockUsers;
     private List<Layout> mockLayouts;
     private List<CourtCase> mockCourtCases;
-    private List<Feedback> mockFeedback;
-    private List<Violation> mockViolations;
     private Map<String, Object> statisticsData;
     
     private DataManager() {
-        initializeMockData();
+        // Try to initialize database manager
+        try {
+            databaseManager = DatabaseManager.getInstance();
+            // Test connection and check if required tables exist
+            if (databaseManager != null && DBConnection.testConnection() && testDatabaseTables()) {
+                useDatabase = true;
+            }
+        } catch (Exception e) {
+            // If database is not available, fall back to mock data
+            useDatabase = false;
+        }
+        
+        if (!useDatabase) {
+            initializeMockData();
+        }
+    }
+    
+    /**
+     * Test if required database tables exist
+     * 
+     * @return true if all required tables exist, false otherwise
+     */
+    private boolean testDatabaseTables() {
+        try (Connection connection = DBConnection.getConnection()) {
+            // Test if layouts table exists by running a simple query
+            try (Statement statement = connection.createStatement()) {
+                statement.executeQuery("SELECT 1 FROM layouts LIMIT 1");
+                return true;
+            }
+        } catch (SQLException e) {
+            // If any exception occurs, tables don't exist or aren't accessible
+            return false;
+        }
     }
     
     public static DataManager getInstance() {
@@ -38,8 +79,6 @@ public class DataManager {
         initializeUsers();
         initializeLayouts();
         initializeCourtCases();
-        initializeFeedback();
-        initializeViolations();
         initializeStatistics();
     }
     
@@ -123,41 +162,6 @@ public class DataManager {
                 "Violation of environmental norms", "L007"));
     }
     
-    private void initializeFeedback() {
-        mockFeedback = new ArrayList<>();
-        
-        mockFeedback.add(new Feedback("F001", "U002", "System is very user-friendly", 
-                "Positive", LocalDateTime.of(2023, 6, 15, 10, 30), true));
-        
-        mockFeedback.add(new Feedback("F002", "U003", "Document loading is slow", 
-                "Negative", LocalDateTime.of(2023, 6, 14, 14, 20), false));
-        
-        mockFeedback.add(new Feedback("F003", "U004", "Map feature is excellent", 
-                "Positive", LocalDateTime.of(2023, 6, 13, 9, 15), true));
-        
-        mockFeedback.add(new Feedback("F004", "U002", "Need more search filters", 
-                "Suggestion", LocalDateTime.of(2023, 6, 12, 16, 45), false));
-        
-        mockFeedback.add(new Feedback("F005", "U005", "AI scanning feature is impressive", 
-                "Positive", LocalDateTime.of(2023, 6, 11, 11, 30), true));
-    }
-    
-    private void initializeViolations() {
-        mockViolations = new ArrayList<>();
-        
-        mockViolations.add(new Violation("V001", "U002", "Screenshot Attempt", 
-                LocalDateTime.of(2023, 6, 15, 14, 30), "Layout document L001", 
-                "Attempted to take screenshot"));
-        
-        mockViolations.add(new Violation("V002", "U003", "Print Attempt", 
-                LocalDateTime.of(2023, 6, 14, 16, 15), "Court case document C001", 
-                "Attempted to print document"));
-        
-        mockViolations.add(new Violation("V003", "U004", "Copy Attempt", 
-                LocalDateTime.of(2023, 6, 13, 10, 20), "Layout document L003", 
-                "Attempted to copy text"));
-    }
-    
     private void initializeStatistics() {
         statisticsData = new HashMap<>();
         
@@ -169,8 +173,6 @@ public class DataManager {
         dashboardStats.put("rejectedLayouts", (int) mockLayouts.stream().filter(l -> "Rejected".equals(l.getStatus())).count());
         dashboardStats.put("activeCases", (int) mockCourtCases.stream().filter(c -> "Active".equals(c.getStatus())).count());
         dashboardStats.put("totalUsers", mockUsers.size());
-        dashboardStats.put("totalViolations", mockViolations.size());
-        dashboardStats.put("totalFeedback", mockFeedback.size());
         
         statisticsData.put("dashboard", dashboardStats);
         
@@ -189,125 +191,318 @@ public class DataManager {
         statisticsData.put("statusDistribution", statusDistribution);
     }
     
-    // Getter methods
+    /**
+     * Authenticate user by username and password
+     * 
+     * @param username The username
+     * @param password The password
+     * @param role The expected role
+     * @return User object if authentication is successful, null otherwise
+     */
+    public User authenticateUser(String username, String password, User.Role role) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.authenticateUser(username, password, role);
+        } else {
+            // Use mock authentication
+            for (User user : mockUsers) {
+                if (user.getUsername().equals(username) && user.authenticate(password)) {
+                    if ((role == User.Role.ADMIN && user.isAdmin()) ||
+                        (role == User.Role.USER && user.canViewDocuments() && !user.isAdmin()) ||
+                        (role == User.Role.VIEWER && !user.canViewDocuments())) {
+                        return user;
+                    }
+                }
+            }
+            return null;
+        }
+    }
+    
+    /**
+     * Register a new user
+     * 
+     * @param user The user to register
+     * @return true if registration is successful, false otherwise
+     */
+    public boolean registerUser(User user) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.registerUser(user);
+        } else {
+            // Mock implementation
+            mockUsers.add(user);
+            return true;
+        }
+    }
+    
+    /**
+     * Search layouts based on criteria
+     * 
+     * @param query Search query
+     * @param status Status filter
+     * @param owner Owner filter
+     * @return List of matching layouts
+     */
+    public List<Layout> searchLayouts(String query, String status, String owner) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.searchLayouts(query, status, owner);
+        } else {
+            List<Layout> results = new ArrayList<>();
+            
+            for (Layout layout : mockLayouts) {
+                boolean matches = true;
+                
+                if (query != null && !query.trim().isEmpty()) {
+                    String q = query.toLowerCase();
+                    matches = layout.getLayoutName().toLowerCase().contains(q) ||
+                             layout.getFileNumber().toLowerCase().contains(q) ||
+                             layout.getSurveyNumber().toLowerCase().contains(q);
+                }
+                
+                if (matches && status != null && !status.equals("All")) {
+                    matches = layout.getStatus().equals(status);
+                }
+                
+                if (matches && owner != null && !owner.trim().isEmpty()) {
+                    matches = layout.getOwnerName().toLowerCase().contains(owner.toLowerCase());
+                }
+                
+                if (matches) {
+                    results.add(layout);
+                }
+            }
+            
+            return results;
+        }
+    }
+    
+    /**
+     * Get layout by ID
+     * 
+     * @param layoutId The layout ID
+     * @return Layout object or null if not found
+     */
+    public Layout getLayoutById(String layoutId) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.getLayoutById(layoutId);
+        } else {
+            return mockLayouts.stream()
+                    .filter(l -> l.getFileNumber().equals(layoutId))
+                    .findFirst()
+                    .orElse(null);
+        }
+    }
+    
+    /**
+     * Add a new layout
+     * 
+     * @param layout The layout to add
+     * @return true if successful, false otherwise
+     */
+    public boolean addLayout(Layout layout) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.addLayout(layout);
+        } else {
+            mockLayouts.add(layout);
+            updateStatistics();
+            return true;
+        }
+    }
+    
+    /**
+     * Update an existing layout
+     * 
+     * @param layout The layout to update
+     * @return true if successful, false otherwise
+     */
+    public boolean updateLayout(Layout layout) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.updateLayout(layout);
+        } else {
+            for (int i = 0; i < mockLayouts.size(); i++) {
+                if (mockLayouts.get(i).getFileNumber().equals(layout.getFileNumber())) {
+                    mockLayouts.set(i, layout);
+                    break;
+                }
+            }
+            updateStatistics();
+            return true;
+        }
+    }
+    
+    /**
+     * Delete a layout by ID
+     * 
+     * @param layoutId The layout ID
+     * @return true if successful, false otherwise
+     */
+    public boolean deleteLayout(String layoutId) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.deleteLayout(layoutId);
+        } else {
+            mockLayouts.removeIf(l -> l.getFileNumber().equals(layoutId));
+            updateStatistics();
+            return true;
+        }
+    }
+    
+    /**
+     * Get all layouts
+     * 
+     * @return List of all layouts
+     */
+    public List<Layout> getAllLayouts() {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.getAllLayouts();
+        } else {
+            return new ArrayList<>(mockLayouts);
+        }
+    }
+    
+    /**
+     * Get court cases by layout ID
+     * 
+     * @param layoutId The layout ID
+     * @return List of court cases for the layout
+     */
+    public List<CourtCase> getCourtCasesByLayoutId(String layoutId) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.getCourtCasesByLayoutId(layoutId);
+        } else {
+            return mockCourtCases.stream()
+                    .filter(c -> layoutId.equals(c.getRelatedLayoutId()))
+                    .collect(ArrayList::new, (list, case_) -> list.add(case_), List::addAll);
+        }
+    }
+    
+    /**
+     * Get all court cases
+     * 
+     * @return List of all court cases
+     */
+    public List<CourtCase> getAllCourtCases() {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.getAllCourtCases();
+        } else {
+            return new ArrayList<>(mockCourtCases);
+        }
+    }
+    
+    /**
+     * Add a new court case
+     * 
+     * @param courtCase The court case to add
+     * @return true if successful, false otherwise
+     */
+    public boolean addCourtCase(CourtCase courtCase) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.addCourtCase(courtCase);
+        } else {
+            mockCourtCases.add(courtCase);
+            return true;
+        }
+    }
+    
+    /**
+     * Update an existing court case
+     * 
+     * @param courtCase The court case to update
+     * @return true if successful, false otherwise
+     */
+    public boolean updateCourtCase(CourtCase courtCase) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.updateCourtCase(courtCase);
+        } else {
+            for (int i = 0; i < mockCourtCases.size(); i++) {
+                if (mockCourtCases.get(i).getCaseId().equals(courtCase.getCaseId())) {
+                    mockCourtCases.set(i, courtCase);
+                    break;
+                }
+            }
+            return true;
+        }
+    }
+    
+    /**
+     * Delete a court case by ID
+     * 
+     * @param caseId The court case ID
+     * @return true if successful, false otherwise
+     */
+    public boolean deleteCourtCase(String caseId) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.deleteCourtCase(caseId);
+        } else {
+            mockCourtCases.removeIf(c -> c.getCaseId().equals(caseId));
+            return true;
+        }
+    }
+    
+    /**
+     * Get all users
+     * 
+     * @return List of all users
+     */
+    public List<User> getAllUsers() {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.getAllUsers();
+        } else {
+            return new ArrayList<>(mockUsers);
+        }
+    }
+    
+    /**
+     * Get dashboard statistics
+     * 
+     * @return Map containing dashboard statistics
+     */
+    public Map<String, Object> getStatisticsData() {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.getDashboardStatistics();
+        } else {
+            return new HashMap<>(statisticsData);
+        }
+    }
+    
+    /**
+     * Delete a user by ID
+     * 
+     * @param userId The user ID
+     * @return true if successful, false otherwise
+     */
+    public boolean deleteUser(String userId) {
+        if (useDatabase && databaseManager != null) {
+            return databaseManager.deleteUser(userId);
+        } else {
+            // Mock implementation
+            mockUsers.removeIf(user -> user.getUserId().equals(userId));
+            return true;
+        }
+    }
+    
+    // Deprecated methods - kept for backward compatibility
     public List<User> getMockUsers() {
-        return new ArrayList<>(mockUsers);
+        return getAllUsers();
     }
     
     public List<Layout> getMockLayouts() {
-        return new ArrayList<>(mockLayouts);
+        return getAllLayouts();
     }
     
     public List<CourtCase> getMockCourtCases() {
-        return new ArrayList<>(mockCourtCases);
-    }
-    
-    public List<Feedback> getMockFeedback() {
-        return new ArrayList<>(mockFeedback);
-    }
-    
-    public List<Violation> getMockViolations() {
-        return new ArrayList<>(mockViolations);
-    }
-    
-    public Map<String, Object> getStatisticsData() {
-        return new HashMap<>(statisticsData);
-    }
-    
-    // Search methods
-    public List<Layout> searchLayouts(String query, String status, String owner) {
-        List<Layout> results = new ArrayList<>();
-        
-        for (Layout layout : mockLayouts) {
-            boolean matches = true;
-            
-            if (query != null && !query.trim().isEmpty()) {
-                String q = query.toLowerCase();
-                matches = layout.getLayoutName().toLowerCase().contains(q) ||
-                         layout.getFileNumber().toLowerCase().contains(q) ||
-                         layout.getSurveyNumber().toLowerCase().contains(q);
-            }
-            
-            if (matches && status != null && !status.equals("All")) {
-                matches = layout.getStatus().equals(status);
-            }
-            
-            if (matches && owner != null && !owner.trim().isEmpty()) {
-                matches = layout.getOwnerName().toLowerCase().contains(owner.toLowerCase());
-            }
-            
-            if (matches) {
-                results.add(layout);
-            }
-        }
-        
-        return results;
-    }
-    
-    public Layout getLayoutById(String layoutId) {
-        return mockLayouts.stream()
-                .filter(l -> l.getFileNumber().equals(layoutId))
-                .findFirst()
-                .orElse(null);
-    }
-    
-    public List<CourtCase> getCourtCasesByLayoutId(String layoutId) {
-        return mockCourtCases.stream()
-                .filter(c -> layoutId.equals(c.getRelatedLayoutId()))
-                .collect(ArrayList::new, (list, case_) -> list.add(case_), List::addAll);
-    }
-    
-    // CRUD operations
-    public void addLayout(Layout layout) {
-        mockLayouts.add(layout);
-        updateStatistics();
-    }
-    
-    public void updateLayout(Layout layout) {
-        for (int i = 0; i < mockLayouts.size(); i++) {
-            if (mockLayouts.get(i).getFileNumber().equals(layout.getFileNumber())) {
-                mockLayouts.set(i, layout);
-                break;
-            }
-        }
-        updateStatistics();
-    }
-    
-    public void deleteLayout(String layoutId) {
-        mockLayouts.removeIf(l -> l.getFileNumber().equals(layoutId));
-        updateStatistics();
-    }
-    
-    public void addFeedback(Feedback feedback) {
-        mockFeedback.add(feedback);
-    }
-    
-    public void addViolation(Violation violation) {
-        mockViolations.add(violation);
+        return getAllCourtCases();
     }
     
     private void updateStatistics() {
-        // Recalculate statistics when data changes
-        Map<String, Integer> dashboardStats = (Map<String, Integer>) statisticsData.get("dashboard");
-        dashboardStats.put("totalLayouts", mockLayouts.size());
-        dashboardStats.put("approvedLayouts", (int) mockLayouts.stream().filter(l -> "Approved".equals(l.getStatus())).count());
-        dashboardStats.put("pendingLayouts", (int) mockLayouts.stream().filter(l -> "Pending".equals(l.getStatus())).count());
-        dashboardStats.put("rejectedLayouts", (int) mockLayouts.stream().filter(l -> "Rejected".equals(l.getStatus())).count());
+        if (!useDatabase) {
+            // Recalculate statistics when data changes
+            Map<String, Integer> dashboardStats = (Map<String, Integer>) statisticsData.get("dashboard");
+            dashboardStats.put("totalLayouts", mockLayouts.size());
+            dashboardStats.put("approvedLayouts", (int) mockLayouts.stream().filter(l -> "Approved".equals(l.getStatus())).count());
+            dashboardStats.put("pendingLayouts", (int) mockLayouts.stream().filter(l -> "Pending".equals(l.getStatus())).count());
+            dashboardStats.put("rejectedLayouts", (int) mockLayouts.stream().filter(l -> "Rejected".equals(l.getStatus())).count());
+        }
     }
-
+    
     public void initialize() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
-
-    private static class Feedback {
-
-        public Feedback(String f001, String u002, String system_is_very_userfriendly, String positive, LocalDateTime of, boolean par) {
-        }
-    }
-
-    private static class Violation {
-
-        public Violation(String v001, String u002, String screenshot_Attempt, LocalDateTime of, String layout_document_L001, String attempted_to_take_screenshot) {
-        }
+        // No initialization needed as we're using database
     }
 }
